@@ -9,7 +9,7 @@ var hereDoc = function(f) {
 liveaddress.run(['$templateCache', function($templateCache) {
   $templateCache.put('angular-liveaddress.html',
     '<div class="liveaddress">'+
-      '<input type="text" ng-model="address" class="{{ inputClass }}" ng-class="{current: suggestions.length}" ng-keydown="handleKeydown($event)" ng-blur="handleBlur()"/>'+
+      '<input type="text" ng-model="address" placeholder="1600 Pennsylvania Ave" autocomplete="off" class="{{ inputClass }}" ng-class="{current: suggestions.length}" ng-keydown="handleKeydown($event)" ng-blur="handleBlur()"/>'+
       '<ul class="suggestions" ng-show="!geocoded && suggestions.length">'+
         '<li '+
           'ng-repeat="(i, suggestion) in suggestions"'+
