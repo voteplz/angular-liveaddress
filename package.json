@@ -1,0 +1,5 @@
+{
+  "name": "voteplz-angular-liveaddress",
+  "version": "0.1.0",
+  "main": "./liveaddress.js"
+}
