@@ -33,17 +33,33 @@ liveaddress.directive('liveaddress', ['$http', '$q', function($http, $q){
       selection: '=?',
       inputClass: '@?',
       update: '&?',
-      initial: '=?'
+      initial: '@',
+      loadInitial: '=?'
     },
     link: function(scope, element, attrs){
-      var canceler, geocodeCanceler;
+      var canceler, geocodeCanceler, timedout;
 
       scope.suggestions = [];
       scope.current = 0;
       scope.geocoded = false;
       scope.selection = false;
-      if (scope.initial) {
-        scope.address = scope.initial;
+      if (scope.loadInitial) {
+        attrs.$observe('initial', val => {
+          if (val && !timedout) {
+            scope.initial = val
+            scope.address = val
+            startWatching()
+          }
+        })
+
+        setTimeout(() => {
+          if (!scope.initial) {
+            timedout = true
+            startWatching()
+          }
+        }, 300)
+      } else {
+        startWatching()
       }
       if (scope.update) {
         scope.$watch('geocoded', function(newAddress, previous){
@@ -54,69 +70,73 @@ liveaddress.directive('liveaddress', ['$http', '$q', function($http, $q){
 
       var foundInitialAddress = false;
 
-      scope.$watch('address', function(newAddress, oldAddress){
-        if (canceler) {
-          canceler.resolve();
-        }
+      function startWatching () {
+        scope.$watch('address', function(newAddress, oldAddress){
+          if (canceler) {
+            canceler.resolve();
+          }
 
-        if (scope.suggestions && scope.suggestions[scope.current] && scope.suggestions[scope.current].text == newAddress) {
-          return;
-        }
-        scope.geocoded = false;
+          if (scope.suggestions && scope.suggestions[scope.current] && scope.suggestions[scope.current].text == newAddress) {
+            return;
+          }
+          // scope.geocoded = false;
 
-        if (!newAddress || (scope.initial && newAddress == scope.initial && !foundInitialAddress)) {
-          foundInitialAddress = true;
-          scope.suggestions = [];
-          scope.current = 0;
-          return;
-        }
+          if (!newAddress || (scope.initial && newAddress == scope.initial && !foundInitialAddress)) {
+            foundInitialAddress = true;
+            scope.suggestions = [];
+            scope.current = 0;
+            return;
+          } else {
+            scope.geocoded = false;
+          }
 
-        canceler = $q.defer();
+          canceler = $q.defer();
 
-        $http({
-          method: 'GET',
-          url: 'https://autocomplete-api.smartystreets.com/suggest',
-          params: {
-            'auth-id': scope.token,
-            'prefix': newAddress
-          },
-          timeout: canceler
-        }).success(function(data, status, headers, config){
-          scope.suggestions = data.suggestions;
-          scope.current = 0;
-        }).error(function(data, status, headers, config){
-          scope.suggestions = [];
-          scope.current = 0;
+          $http({
+            method: 'GET',
+            url: 'https://autocomplete-api.smartystreets.com/suggest',
+            params: {
+              'auth-id': scope.token,
+              'prefix': newAddress
+            },
+            timeout: canceler
+          }).success(function(data, status, headers, config){
+            scope.suggestions = data.suggestions;
+            scope.current = 0;
+          }).error(function(data, status, headers, config){
+            scope.suggestions = [];
+            scope.current = 0;
+          });
         });
-      });
 
-      scope.$watch('current', function(current, lastCurrent){
-        if (scope.suggestions && scope.suggestions[current] && (current || current != lastCurrent)) {
-          scope.address = scope.suggestions[scope.current].text;
-        }
-      });
-
-      scope.$watch('selection', function(selection){
-        if (!selection) return;
-        if (geocodeCanceler) {
-          geocodeCanceler.resolve();
-        }
-        geocodeCanceler = $q.defer();
-
-        $http({
-          method: 'GET',
-          url: 'https://api.smartystreets.com/street-address',
-          params: {
-            'auth-token': scope.token,
-            'street': selection.street_line,
-            'city': selection.city,
-            'state': selection.state
-          },
-          timeout: geocodeCanceler
-        }).success(function(data, status, headers, config){
-          scope.geocoded = data[0] || {error: 'noresults'};
+        scope.$watch('current', function(current, lastCurrent){
+          if (scope.suggestions && scope.suggestions[current] && (current || current != lastCurrent)) {
+            scope.address = scope.suggestions[scope.current].text;
+          }
         });
-      });
+
+        scope.$watch('selection', function(selection){
+          if (!selection) return;
+          if (geocodeCanceler) {
+            geocodeCanceler.resolve();
+          }
+          geocodeCanceler = $q.defer();
+
+          $http({
+            method: 'GET',
+            url: 'https://api.smartystreets.com/street-address',
+            params: {
+              'auth-token': scope.token,
+              'street': selection.street_line,
+              'city': selection.city,
+              'state': selection.state
+            },
+            timeout: geocodeCanceler
+          }).success(function(data, status, headers, config){
+            scope.geocoded = data[0] || {error: 'noresults'};
+          });
+        });
+      }
 
       scope.handleKeydown = function(e){
         if (e.which == 13) {
