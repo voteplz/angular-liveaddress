@@ -44,7 +44,7 @@ liveaddress.directive('liveaddress', ['$http', '$q', function($http, $q){
       scope.geocoded = false;
       scope.selection = false;
       if (scope.loadInitial) {
-        attrs.$observe('initial', val => {
+        attrs.$observe('initial', function (val) {
           if (val && !timedout) {
             scope.initial = val
             scope.address = val
@@ -52,7 +52,7 @@ liveaddress.directive('liveaddress', ['$http', '$q', function($http, $q){
           }
         })
 
-        setTimeout(() => {
+        setTimeout(function () {
           if (!scope.initial) {
             timedout = true
             startWatching()
